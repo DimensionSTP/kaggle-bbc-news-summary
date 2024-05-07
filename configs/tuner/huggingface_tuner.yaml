@@ -1,0 +1,45 @@
+_target_: src.tuners.huggingface_tuner.HuggingFaceTuner
+hparams:
+  pretrained_model_name:
+    - klue/roberta-large
+    - klue/roberta-base
+    - klue/roberta-small
+    - klue/bert-base
+    - microsoft/beit-base-patch16-224-pt22k-ft22k
+    - microsoft/beit-large-patch16-224-pt22k-ft22k
+    - microsoft/dit-base-finetuned-rvlcdip
+    - microsoft/dit-large-finetuned-rvlcdip
+    - nielsr/layoutlmv3-finetuned-cord
+    - nielsr/layoutlmv3-finetuned-funsd
+    - felixtran/layoutlmv3-rvl-cdip-small 
+  lr:
+    low: 0.000005
+    high: 0.00005
+    log: False
+  t_max:
+    low: 25
+    high: 100
+    log: False
+  eta_min:
+    low: 0.0000001
+    high: 0.0000005
+    log: False
+
+module_params:
+  average: macro
+  interval: step
+  devices: ${devices}
+  accelerator: ${accelerator}
+  strategy: ${strategy}
+  log_every_n_steps: ${log_every_n_steps}
+  precision: ${precision}
+  accumulate_grad_batches: ${accumulate_grad_batches}
+  max_epochs: ${epoch}
+  monitor: ${monitor}
+  mode: ${tracking_direction}
+  patience: ${patience}
+  min_delta: ${min_delta}
+
+num_trials: ${num_trials}
+seed: ${seed}
+hparams_save_path: ${hparams_save_path}
