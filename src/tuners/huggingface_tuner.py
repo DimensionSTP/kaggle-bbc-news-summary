@@ -105,8 +105,7 @@ class HuggingFaceTuner:
         )
         architecture = HuggingFaceArchitecture(
             model=model,
-            num_labels=self.module_params.num_labels,
-            average=self.module_params.average,
+            pretrained_model_name=params["pretrained_model_name"],
             strategy=self.module_params.strategy,
             lr=params["lr"],
             t_max=params["t_max"],
