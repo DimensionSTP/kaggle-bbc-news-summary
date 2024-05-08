@@ -63,11 +63,10 @@ class HuggingFaceArchitecture(LightningModule):
         batch: Dict[str, Any],
         mode: str,
     ) -> Dict[str, torch.Tensor]:
-        encoded, index = batch
         encoded = batch["encoded"]
-        raw_label = encoded["labels"]
+        encoded_label = encoded["labels"]
         label = self.tokenizer.batch_decode(
-            sequences=raw_label,
+            sequences=encoded_label,
             skip_special_tokens=True,
             clean_up_tokenization_spaces=False,
         )
@@ -77,11 +76,11 @@ class HuggingFaceArchitecture(LightningModule):
             mode=mode,
         )
         logit = output.logits
-        raw_pred = self.model.generate(
+        encoded_pred = self.model.generate(
             encoded=encoded,
         )
         pred = self.tokenizer.batch_decode(
-            sequences=raw_pred,
+            sequences=encoded_pred,
             skip_special_tokens=True,
             clean_up_tokenization_spaces=False,
         )
@@ -89,7 +88,6 @@ class HuggingFaceArchitecture(LightningModule):
         return {
             "loss": loss,
             "logit": logit,
-            "raw_pred": raw_pred,
             "pred": pred,
             "label": label,
             "index": index,
@@ -156,7 +154,7 @@ class HuggingFaceArchitecture(LightningModule):
             on_step=False,
             on_epoch=True,
             prog_bar=True,
-            sync_dist=True,
+            sync_dist=False,
         )
         return {
             "loss": loss,
@@ -193,7 +191,7 @@ class HuggingFaceArchitecture(LightningModule):
             on_step=False,
             on_epoch=True,
             prog_bar=True,
-            sync_dist=True,
+            sync_dist=False,
         )
         return {
             "loss": loss,
@@ -230,7 +228,7 @@ class HuggingFaceArchitecture(LightningModule):
             on_step=False,
             on_epoch=True,
             prog_bar=True,
-            sync_dist=True,
+            sync_dist=False,
         )
         return {
             "loss": loss,
@@ -243,20 +241,18 @@ class HuggingFaceArchitecture(LightningModule):
         batch: Dict[str, Any],
         batch_idx: int,
     ) -> torch.Tensor:
-        output = self.step(
-            batch=batch,
-            mode="eval",
+        encoded = batch["encoded"]
+        index = batch["index"]
+        index = index.tolist()
+        encoded_pred = self.model.generate(
+            encoded=encoded,
         )
-        raw_pred = output["raw_pred"]
-        index = output["index"]
-        index = index.unsqueeze(-1).float()
-        output = torch.cat(
-            (
-                raw_pred,
-                index,
-            ),
-            dim=-1,
+        pred = self.tokenizer.batch_decode(
+            sequences=encoded_pred,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=False,
         )
+        output = {index[i]: pred[i] for i in range(len(index))}
         gathered_output = self.all_gather(output)
         return gathered_output
 
