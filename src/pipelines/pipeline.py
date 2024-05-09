@@ -1,8 +1,6 @@
 import os
 
-import numpy as np
 import pandas as pd
-import torch
 
 from hydra.utils import instantiate
 from omegaconf import DictConfig
@@ -231,37 +229,27 @@ def predict(
             logged_hparams[key] = value
     logger.log_hyperparams(logged_hparams)
 
-    if (
-        config.strategy == "deepspeed_stage_3"
-        or config.strategy == "deepspeed_stage_3_offload"
-    ):
-        trainer: Trainer = instantiate(
-            config.trainer,
-            strategy="ddp",
-            callbacks=callbacks,
-            logger=logger,
-            _convert_="partial",
-        )
-    else:
-        trainer: Trainer = instantiate(
-            config.trainer,
-            callbacks=callbacks,
-            logger=logger,
-            _convert_="partial",
-        )
+    trainer: Trainer = instantiate(
+        config.trainer,
+        strategy="auto",
+        devices=1,
+        callbacks=callbacks,
+        logger=logger,
+        _convert_="partial",
+    )
 
     try:
         if (
             config.strategy == "deepspeed_stage_3"
             or config.strategy == "deepspeed_stage_3_offload"
         ):
-            logits = trainer.predict(
+            preds = trainer.predict(
                 model=architecture,
                 dataloaders=predict_loader,
                 ckpt_path=f"{config.ckpt_path}/model.pt",
             )
         else:
-            logits = trainer.predict(
+            preds = trainer.predict(
                 model=architecture,
                 dataloaders=predict_loader,
                 ckpt_path=config.ckpt_path,
@@ -279,42 +267,22 @@ def predict(
         )
         raise e
 
-    if len(logits[0].shape) == 3:
-        logits = [
-            torch.cat(
-                logit.split(
-                    1,
-                    dim=0,
-                ),
-                dim=1,
-            ).view(
-                -1,
-                logits[0].shape[-1],
-            )
-            for logit in logits
-        ]
-    all_logits = torch.cat(
-        logits,
-        dim=0,
-    )
-    sorted_logits_with_indices = all_logits[all_logits[:, -1].argsort()]
+    all_predictions_with_indices = {}
+    for pred in preds:
+        all_predictions_with_indices.update(pred)
+    all_predictions = [
+        all_predictions_with_indices[key]
+        for key in sorted(all_predictions_with_indices.keys())
+    ]
     pred_df = pd.read_csv(
         f"{config.connected_dir}/data/{config.submission_file_name}.csv"
     )
-    sorted_logits = sorted_logits_with_indices[: len(pred_df), :-1].numpy()
-    all_predictions = np.argmax(
-        sorted_logits,
-        axis=1,
-    )
-    if not os.path.exists(f"{config.connected_dir}/logits"):
-        os.makedirs(
-            f"{config.connected_dir}/logits",
-            exist_ok=True,
+    if len(all_predictions) < len(pred_df):
+        raise ValueError(
+            f"Length of all_predictions {all_predictions} is shorter than length of predict data {pred_df}."
         )
-    np.save(
-        f"{config.connected_dir}/logits/{config.logit_name}.npy",
-        sorted_logits,
-    )
+    if len(all_predictions) > len(pred_df):
+        all_predictions = all_predictions[: len(pred_df)]
     pred_df[config.target_column_name] = all_predictions
     if not os.path.exists(f"{config.connected_dir}/submissions"):
         os.makedirs(
