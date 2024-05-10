@@ -40,7 +40,6 @@ class HuggingFaceArchitecture(LightningModule):
                 ROUGEScore(),
             ]
         )
-        self.train_metrics = metrics.clone(prefix="train_")
         self.val_metrics = metrics.clone(prefix="val_")
         self.test_metrics = metrics.clone(prefix="test_")
 
@@ -64,34 +63,50 @@ class HuggingFaceArchitecture(LightningModule):
         mode: str,
     ) -> Dict[str, torch.Tensor]:
         encoded = batch["encoded"]
-        encoded_label = encoded["labels"]
-        label = self.tokenizer.batch_decode(
-            sequences=encoded_label,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=False,
-        )
+        label = encoded["labels"]
         index = batch["index"]
         output = self(
             encoded=encoded,
             mode=mode,
         )
         logit = output.logits
-        encoded_pred = self.model.generate(
-            encoded=encoded,
-        )
-        pred = self.tokenizer.batch_decode(
-            sequences=encoded_pred,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=False,
+        pred = torch.argmax(
+            logit,
+            dim=-1,
         )
         loss = output.loss
-        return {
-            "loss": loss,
-            "logit": logit,
-            "pred": pred,
-            "label": label,
-            "index": index,
-        }
+        if mode == "train":
+            return {
+                "loss": loss,
+                "logit": logit,
+                "pred": pred,
+                "label": label,
+                "index": index,
+            }
+        else:
+            generation = self.model.generate(
+                encoded=encoded,
+            )
+            decoded_generation = self.tokenizer.batch_decode(
+                sequences=generation,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False,
+            )
+            decoded_label = self.tokenizer.batch_decode(
+                sequences=label,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False,
+            )
+            return {
+                "loss": loss,
+                "logit": logit,
+                "pred": pred,
+                "generation": generation,
+                "decoded_generation": decoded_generation,
+                "label": label,
+                "decoded_label": decoded_label,
+                "index": index,
+            }
 
     def configure_optimizers(self) -> Dict[str, Any]:
         if self.strategy == "deepspeed_stage_3":
@@ -137,10 +152,6 @@ class HuggingFaceArchitecture(LightningModule):
         loss = output["loss"]
         pred = output["pred"]
         label = output["label"]
-        metrics = self.train_metrics(
-            pred,
-            label,
-        )
         self.log(
             "train_loss",
             loss,
@@ -148,13 +159,6 @@ class HuggingFaceArchitecture(LightningModule):
             on_epoch=True,
             prog_bar=False,
             sync_dist=True,
-        )
-        self.log_dict(
-            metrics,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            sync_dist=False,
         )
         return {
             "loss": loss,
@@ -173,10 +177,13 @@ class HuggingFaceArchitecture(LightningModule):
         )
         loss = output["loss"]
         pred = output["pred"]
+        generation = output["generation"]
+        decoded_generation = output["decoded_generation"]
         label = output["label"]
+        decoded_label = output["decoded_label"]
         metrics = self.val_metrics(
-            pred,
-            label,
+            decoded_generation,
+            decoded_label,
         )
         self.log(
             "val_loss",
@@ -196,7 +203,10 @@ class HuggingFaceArchitecture(LightningModule):
         return {
             "loss": loss,
             "pred": pred,
+            "generation": generation,
+            "decoded_generation": decoded_generation,
             "label": label,
+            "decoded_label": decoded_label,
         }
 
     def test_step(
@@ -210,10 +220,13 @@ class HuggingFaceArchitecture(LightningModule):
         )
         loss = output["loss"]
         pred = output["pred"]
+        generation = output["generation"]
+        decoded_generation = output["decoded_generation"]
         label = output["label"]
+        decoded_label = output["decoded_label"]
         metrics = self.test_metrics(
-            pred,
-            label,
+            decoded_generation,
+            decoded_label,
         )
         self.log(
             "test_loss",
@@ -233,7 +246,10 @@ class HuggingFaceArchitecture(LightningModule):
         return {
             "loss": loss,
             "pred": pred,
+            "generation": generation,
+            "decoded_generation": decoded_generation,
             "label": label,
+            "decoded_label": decoded_label,
         }
 
     def predict_step(
@@ -244,20 +260,20 @@ class HuggingFaceArchitecture(LightningModule):
         encoded = batch["encoded"]
         index = batch["index"]
         index = index.tolist()
-        encoded_pred = self.model.generate(
+        generation = self.model.generate(
             encoded=encoded,
         )
-        pred = self.tokenizer.batch_decode(
-            sequences=encoded_pred,
+        decoded_generation = self.tokenizer.batch_decode(
+            sequences=generation,
             skip_special_tokens=True,
             clean_up_tokenization_spaces=False,
         )
-        output = {index[i]: pred[i] for i in range(len(index))}
+        output = {index[i]: decoded_generation[i] for i in range(len(index))}
         gathered_output = self.all_gather(output)
         return gathered_output
 
     def on_train_epoch_end(self) -> None:
-        self.train_metrics.reset()
+        pass
 
     def on_validation_epoch_end(self) -> None:
         self.val_metrics.reset()
