@@ -9,7 +9,6 @@ precision=32
 batch_size=6
 
 python main.py mode=train \
-    modality=$modality \
     is_tuned=$is_tuned \
     strategy=$strategy \
     upload_user=$upload_user \

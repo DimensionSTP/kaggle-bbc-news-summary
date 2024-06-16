@@ -12,12 +12,12 @@ epochs="9 10"
 for epoch in $epochs
 do
     python main.py mode=predict \
-        modality=$modality \
         is_tuned=$is_tuned \
         strategy=$strategy \
         upload_user=$upload_user \
         model_type=$model_type \
         text_max_length=$text_max_length \
         precision=$precision \
-        batch_size=$batch_size
+        batch_size=$batch_size \
+        epoch=$epoch
 done
