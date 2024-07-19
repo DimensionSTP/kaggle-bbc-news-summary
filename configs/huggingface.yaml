@@ -30,6 +30,7 @@ pretrained_model_name: ${upload_user}/${model_type}
 text_max_length: 1024
 
 lr: 0.0001
+weight_decay: 0.01
 period: 2
 eta_min: 0.00001
 
