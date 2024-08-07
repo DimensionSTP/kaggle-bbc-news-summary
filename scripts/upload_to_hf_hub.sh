@@ -9,6 +9,7 @@ text_max_length=1024
 precision=32
 batch_size=6
 epoch=10
+model_detail="bart-large"
 
 python $path/upload_to_hf_hub.py \
     is_tuned=$is_tuned \
@@ -18,4 +19,5 @@ python $path/upload_to_hf_hub.py \
     text_max_length=$text_max_length \
     precision=$precision \
     batch_size=$batch_size \
-    epoch=$epoch
+    epoch=$epoch \
+    model_detail=$model_detail
