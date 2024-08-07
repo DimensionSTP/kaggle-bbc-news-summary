@@ -50,7 +50,7 @@ gradient_clip_algorithm: norm
 epoch: 100
 
 model_name: HuggingFace
-dataset_name: KaggleBBC
+dataset_name: KaggleBBCNewsSummaries
 mode: train
 
 is_tuned: tuned
@@ -69,6 +69,7 @@ logit_name: ${save_detail}-epoch=${epoch}
 submission_name: ${save_detail}-epoch=${epoch}
 
 user_name: ${oc.env:USER_NAME}
+model_detail: bart-large
 upload_tag: news-summaries
 num_safetensors: 2
 
