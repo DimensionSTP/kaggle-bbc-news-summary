@@ -66,20 +66,9 @@ def prepare_upload(
     else:
         raise ValueError(f"Invalid precision type: {config.precision}")
 
-    if config.is_preprocessed:
-        if os.path.exists(config.custom_data_encoder_path):
-            data_encoder_path = config.custom_data_encoder_path
-        else:
-            data_encoder_path = config.pretrained_model_name
-
-        if os.path.exists(config.merged_model_path):
-            model_path = config.merged_model_path
-        else:
-            model_path = config.pretrained_model_name
-
-    tokenizer = AutoTokenizer.from_pretrained(data_encoder_path)
+    tokenizer = AutoTokenizer.from_pretrained(config.pretrained_model_name)
     tokenizer.save_pretrained(save_dir)
-    model_config = AutoConfig.from_pretrained(model_path)
+    model_config = AutoConfig.from_pretrained(config.pretrained_model_name)
     model_config._name_or_path = (
         f"{config.user_name}/{config.model_detail}-{config.upload_tag}"
     )
@@ -87,7 +76,9 @@ def prepare_upload(
     model_config.vocab_size = len(tokenizer)
     model_config.save_pretrained(save_dir)
 
-    original_model = BartForConditionalGeneration.from_pretrained(model_path)
+    original_model = BartForConditionalGeneration.from_pretrained(
+        config.pretrained_model_name
+    )
     original_model.resize_token_embeddings(len(tokenizer))
     original_model.load_state_dict(model_state_dict)
     state_dict = original_model.state_dict()
