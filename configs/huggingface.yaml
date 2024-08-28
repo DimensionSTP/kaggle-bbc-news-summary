@@ -29,10 +29,10 @@ model_type: bart-large-cnn
 pretrained_model_name: ${upload_user}/${model_type}
 text_max_length: 1024
 
-lr: 0.0001
-weight_decay: 0.01
-warmup_rate: 0.05
-eta_min_rate: 0.01
+lr: 1e-4
+weight_decay: 1e-2
+warmup_ratio: 5e-2
+eta_min_ratio: 1e-2
 
 monitor: val_rougeLsum_fmeasure
 tracking_direction: max
