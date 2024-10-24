@@ -32,7 +32,7 @@ text_max_length: 1024
 lr: 3e-5
 weight_decay: 1e-1
 warmup_ratio: 5e-2
-eta_min_ratio: 1e-3
+eta_min_ratio: 1e-2
 
 monitor: val_rougeLsum_fmeasure
 tracking_direction: max
