@@ -73,7 +73,7 @@ submission_name: ${save_detail}-epoch=${epoch}
 user_name: ${oc.env:USER_NAME}
 model_detail: bart-large
 upload_tag: news-summaries
-num_safetensors: 2
+num_safetensors: 1
 
 run_name: ${project_name}
 work_dir: ${hydra:runtime.cwd}
